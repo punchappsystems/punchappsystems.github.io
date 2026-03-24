@@ -247,6 +247,50 @@
       letter-spacing: 0.02em;
     }
     .platform-pill svg { width: 13px; height: 13px; }
+    .platform-pill .pricing-badge { margin-left: 4px; }
+    .platform-store-link { text-decoration: none; }
+
+    .pricing-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .pricing-free {
+      background: rgba(22, 163, 74, 0.12);
+      color: #15803d;
+      border-color: rgba(22, 163, 74, 0.2);
+    }
+    .pricing-one-time {
+      background: rgba(202, 138, 4, 0.14);
+      color: #a16207;
+      border-color: rgba(202, 138, 4, 0.2);
+    }
+    .pricing-subscription {
+      background: rgba(37, 99, 235, 0.14);
+      color: #1d4ed8;
+      border-color: rgba(37, 99, 235, 0.2);
+    }
+    [data-theme="dark"] .pricing-free {
+      background: rgba(34, 197, 94, 0.2);
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+    [data-theme="dark"] .pricing-one-time {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fcd34d;
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+    [data-theme="dark"] .pricing-subscription {
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+      border-color: rgba(59, 130, 246, 0.35);
+    }
 
     /* ─── Tabs ─── */
     .app-tabs {
@@ -268,6 +312,55 @@
     .app-panels { padding: 24px 32px 28px; }
     .app-panel { display: none; }
     .app-panel.active { display: block; }
+
+    /* ─── Gallery ─── */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .gallery-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+    }
+    .gallery-item:hover {
+      border-color: var(--border-hover);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-1px);
+    }
+    .gallery-open {
+      display: block;
+      width: 100%;
+      border: none;
+      padding: 0;
+      background: transparent;
+      cursor: zoom-in;
+      text-align: left;
+    }
+    .gallery-item img {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      object-fit: cover;
+      display: block;
+      background: var(--bg-card-hover);
+    }
+    .gallery-empty {
+      text-align: center;
+      padding: 30px 20px;
+      color: var(--text-tertiary);
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      font-size: 0.9rem;
+    }
+    .app-gallery {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg-card) 85%, var(--bg-alt));
+    }
 
     /* ─── Downloads ─── */
     .platform-downloads {
@@ -291,6 +384,9 @@
     .plat-card-icon svg { width: 18px; height: 18px; }
     .plat-card-icon img { width: 100%; height: 100%; object-fit: cover; }
     .plat-card-name { font-weight: 700; font-size: 0.95rem; }
+    .plat-card-name-link { color: inherit; text-decoration: none; }
+    .plat-card-name-link:hover { color: var(--accent); }
+    .plat-card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .plat-card-version {
       font-size: 0.75rem; color: var(--text-tertiary); font-family: var(--mono);
     }
@@ -432,6 +528,40 @@
     }
     .modal-close:hover { border-color: var(--border-hover); color: var(--text); background: var(--bg-card-hover); }
 
+    /* ─── Image Lightbox ─── */
+    .image-modal {
+      width: min(1000px, 94vw);
+      max-height: 92vh;
+      padding: 16px;
+      border-radius: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.96) translateY(8px);
+      transition: transform 0.25s ease;
+    }
+    .modal-overlay.active .image-modal { transform: scale(1) translateY(0); }
+    .image-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .image-modal-body {
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    .image-modal-body img {
+      width: 100%;
+      max-height: calc(92vh - 120px);
+      object-fit: contain;
+      display: block;
+      background: var(--bg-card-hover);
+    }
+
     /* ─── Footer ─── */
     .footer {
       border-top: 1px solid var(--border); padding: 32px 0;
@@ -484,6 +614,7 @@
       .section-title { font-size: 1.5rem; }
       .app-header { padding: 20px; }
       .app-tabs { padding: 0 20px; }
+      .app-gallery { padding: 18px 20px; }
       .app-panels { padding: 20px; }
       .platform-downloads { grid-template-columns: 1fr; }
       .board-columns { grid-template-columns: 1fr; }
@@ -653,6 +784,18 @@
     </div>
   </div>
 
+  <!-- ─── Image Modal ─── -->
+  <div class="modal-overlay" id="imageModal" onclick="closeImageModal(event)">
+    <div class="image-modal" onclick="event.stopPropagation()">
+      <div class="image-modal-head">
+        <button class="modal-close" onclick="closeImageModal()">Close</button>
+      </div>
+      <div class="image-modal-body">
+        <img id="imageModalImg" src="" alt="App screenshot">
+      </div>
+    </div>
+  </div>
+
   <!-- ─── Footer ─── -->
   <footer class="footer">
     <div class="container">
@@ -674,10 +817,22 @@
    
     const APPS = [
       {
-        repo: 'punchappsystems/ForcePilotTest',
+        repo: 'punchappsystems/ForcePilot',
         name: 'ForcePilot Test',
-        description: 'Cross-platform testing & automation tool.',
-        icon: 'app_forcepilot.png',
+        description: 'Study smarter for Salesforce certifications with AI summaries and mock exams.',
+        icon: 'forcepilot/media/app_forcepilot.png',
+        pricingByPlatform: {
+          android: 'one-time',
+          ios: 'one-time',
+          macos: 'free',
+          linux: 'free',
+          windows: 'free'
+        },
+        screenshots: [
+          { src: 'forcepilot/media/forcepilot-mac-1.png', caption: 'Vista principal' },
+          { src: 'forcepilot/media/forcepilot-mac-2.png', caption: 'Vista principal' },
+          { src: 'forcepilot/media/forcepilot-mac-3.png', caption: 'Vista principal' }
+        ]
       },
     ];
 
@@ -685,12 +840,14 @@
     const PLATFORM_CONFIG = {
       android: {
         name: 'Android', type: 'mobile',
+        storeUrl: '',
         extensions: ['.apk', '.aab'],
         keywords: ['android'],
         icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.226a.665.665 0 00-.907.26l-1.7 3.04a8.79 8.79 0 00-5.832 0l-1.7-3.04a.665.665 0 10-1.166.648l1.634 2.918A8.26 8.26 0 003.2 12.46h17.6a8.26 8.26 0 00-4.652-6.408l1.636-2.92a.665.665 0 00-.26-.906zM8.4 10.2a1 1 0 110-2 1 1 0 010 2zm7.2 0a1 1 0 110-2 1 1 0 010 2zM3.2 13.66v6.64a1.8 1.8 0 001.8 1.8h.8v3.1a1.2 1.2 0 102.4 0v-3.1h3.6v3.1a1.2 1.2 0 002.4 0v-3.1h.8a1.8 1.8 0 001.8-1.8v-6.64zm-2.4.6a1.2 1.2 0 012.4 0v4.68a1.2 1.2 0 01-2.4 0zm20.4 0v4.68a1.2 1.2 0 01-2.4 0v-4.68a1.2 1.2 0 012.4 0z"/></svg>'
       },
       ios: {
         name: 'iOS', type: 'mobile',
+        storeUrl: '',
         extensions: ['.ipa'],
         keywords: ['ios'],
         icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>'
@@ -713,6 +870,12 @@
         keywords: ['windows', 'win32', 'win64'],
         icon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>'
       }
+    };
+
+    const PRICING_CONFIG = {
+      free: { label: 'Free', className: 'pricing-free' },
+      'one-time': { label: 'One-time purchase', className: 'pricing-one-time' },
+      subscription: { label: 'Subscription', className: 'pricing-subscription' }
     };
 
     /* ─── Helpers ─── */
@@ -744,6 +907,15 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + s[i];
     }
 
+    function sortRoadmapOldestFirst(items) {
+      return items.sort((a, b) => {
+        const aTime = new Date(a.createdAt || 0).getTime();
+        const bTime = new Date(b.createdAt || 0).getTime();
+        if (aTime !== bTime) return aTime - bTime;
+        return (a.number || 0) - (b.number || 0);
+      });
+    }
+
     function timeAgo(dateStr) {
       const d = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
       if (d === 0) return 'Today';
@@ -755,6 +927,15 @@
 
     function slugify(str) {
       return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    }
+
+    function getPricingModel(app, platformKey) {
+      return app.pricingByPlatform?.[platformKey] || 'free';
+    }
+
+    function renderPricingBadge(model) {
+      const cfg = PRICING_CONFIG[model] || PRICING_CONFIG.free;
+      return `<span class="pricing-badge ${cfg.className}">${cfg.label}</span>`;
     }
 
     async function ghFetch(url) {
@@ -808,6 +989,8 @@
         for (const asset of release.assets) {
           const plat = detectPlatform(asset.name);
           if (!plat) continue;
+          const assetNameLower = asset.name.toLowerCase();
+          if (plat === 'macos' && assetNameLower.endsWith('-app.zip')) continue;
           if (!platformReleases[plat]) {
             platformReleases[plat] = { release, assets: [] };
           }
@@ -828,12 +1011,17 @@
         const labels = issue.labels.map(l => l.name.toLowerCase());
         const item = {
           title: issue.title, number: issue.number,
-          url: issue.html_url, labels: issue.labels, state: issue.state
+          url: issue.html_url, labels: issue.labels, state: issue.state,
+          createdAt: issue.created_at
         };
         if (issue.state === 'closed') done.push(item);
         else if (labels.some(l => ['in progress', 'in-progress', 'wip'].includes(l))) progress.push(item);
         else todo.push(item);
       }
+
+      sortRoadmapOldestFirst(todo);
+      sortRoadmapOldestFirst(progress);
+      sortRoadmapOldestFirst(done);
 
       return buildAppCard(app, id, platformReleases, detectedPlatforms, latestRelease, todo, progress, done);
     }
@@ -844,10 +1032,16 @@
       const appIconSrc = app.icon || 'brand_punch.png';
       const pills = detectedPlatforms.map(p => {
         const c = PLATFORM_CONFIG[p];
-        return `<span class="platform-pill">${c.icon}${c.name}</span>`;
+        const pricing = renderPricingBadge(getPricingModel(app, p));
+        const pillHtml = `${c.icon}${c.name}${pricing}`;
+        if (p === 'android' || p === 'ios') {
+          return `<a href="${escapeHtml(c.storeUrl || '')}" class="platform-pill platform-store-link" target="_blank" rel="noopener noreferrer">${pillHtml}</a>`;
+        }
+        return `<span class="platform-pill">${pillHtml}</span>`;
       }).join('');
 
       const noPlatformAssets = detectedPlatforms.length === 0;
+      const galleryHtml = renderGallery(app.screenshots || [], app.name);
 
       // Downloads panel
       let downloadsHtml = '';
@@ -879,12 +1073,19 @@
         downloadsHtml = '<div class="platform-downloads">';
         for (const [key, data] of Object.entries(platformReleases)) {
           const c = PLATFORM_CONFIG[key];
+          const pricing = renderPricingBadge(getPricingModel(app, key));
+          const platformNameHtml = (key === 'android' || key === 'ios')
+            ? `<a href="${escapeHtml(c.storeUrl || '')}" class="plat-card-name plat-card-name-link" target="_blank" rel="noopener noreferrer">${c.name}</a>`
+            : `<div class="plat-card-name">${c.name}</div>`;
           downloadsHtml += `
             <div class="plat-card">
               <div class="plat-card-head">
                 <div class="plat-card-icon"><img src="${escapeHtml(appIconSrc)}" alt="${escapeHtml(app.name)} icon"></div>
                 <div>
-                  <div class="plat-card-name">${c.name}</div>
+                  <div class="plat-card-meta">
+                    ${platformNameHtml}
+                    ${pricing}
+                  </div>
                   <div class="plat-card-version">${escapeHtml(data.release.tag_name)} &middot; ${timeAgo(data.release.published_at)}</div>
                 </div>
               </div>
@@ -953,6 +1154,7 @@
               </a>
             </div>
           </div>
+          ${galleryHtml ? `<div class="app-gallery">${galleryHtml}</div>` : ''}
           <div class="app-tabs">
             <button class="app-tab active" data-app="${id}" data-panel="downloads">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -967,6 +1169,28 @@
             <div class="app-panel active" data-app="${id}" data-panel="downloads">${downloadsHtml}</div>
             <div class="app-panel" data-app="${id}" data-panel="roadmap">${boardHtml}</div>
           </div>
+        </div>`;
+    }
+
+    function renderGallery(images, appName) {
+      if (!images.length) {
+        return '';
+      }
+
+      return `
+        <div class="gallery-grid">
+          ${images.map((img, i) => `
+            <figure class="gallery-item">
+              <button
+                class="gallery-open"
+                type="button"
+                data-src="${escapeHtml(img.src)}"
+                data-alt="${escapeHtml(appName)} screenshot ${i + 1}"
+              >
+                <img src="${escapeHtml(img.src)}" alt="${escapeHtml(appName)} screenshot ${i + 1}" loading="lazy">
+              </button>
+            </figure>
+          `).join('')}
         </div>`;
     }
 
@@ -1042,7 +1266,36 @@
       document.getElementById('qrModal').classList.remove('active');
       document.body.style.overflow = '';
     }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQRModal(); });
+
+    function openImageModal(src, alt) {
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('imageModalImg');
+      modalImg.src = src;
+      modalImg.alt = alt || 'App screenshot';
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeImageModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('imageModalImg');
+      modal.classList.remove('active');
+      modalImg.src = '';
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('click', e => {
+      const trigger = e.target.closest('.gallery-open');
+      if (!trigger) return;
+      openImageModal(trigger.dataset.src, trigger.dataset.alt);
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      closeQRModal();
+      closeImageModal();
+    });
 
     /* ─── Scroll Observer ─── */
     const observer = new IntersectionObserver(entries => {
