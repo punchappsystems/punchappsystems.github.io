@@ -990,7 +990,7 @@
           const plat = detectPlatform(asset.name);
           if (!plat) continue;
           const assetNameLower = asset.name.toLowerCase();
-          if (plat === 'macos' && assetNameLower.endsWith('-app.zip')) continue;
+          //if (plat === 'macos' && assetNameLower.endsWith('-app.zip')) continue;
           if (!platformReleases[plat]) {
             platformReleases[plat] = { release, assets: [] };
           }
