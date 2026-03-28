@@ -714,7 +714,7 @@
           Applications
         </div>
         <h2 class="section-title">Our Apps</h2>
-        <p class="section-subtitle">Each app ships with builds for the platforms it supports. Download the latest stable release or check the roadmap.</p>
+        <p class="section-subtitle">Each app ships with builds for the platforms it supports. Download the latest stable release or check the board.</p>
       </div>
       <div id="appsContainer">
         <div class="app-skeleton">
@@ -818,6 +818,7 @@
     const APPS = [
       {
         repo: 'punchappsystems/ForcePilot',
+        projectBoardUrl: 'https://github.com/users/punchappsystems/projects/2/views/2',
         name: 'ForcePilot Test',
         description: 'Study smarter for Salesforce certifications with AI summaries and mock exams.',
         icon: 'forcepilot/media/app_forcepilot.png',
@@ -907,13 +908,82 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + s[i];
     }
 
-    function sortRoadmapOldestFirst(items) {
+    function sortBoardOldestFirst(items) {
       return items.sort((a, b) => {
         const aTime = new Date(a.createdAt || 0).getTime();
         const bTime = new Date(b.createdAt || 0).getTime();
         if (aTime !== bTime) return aTime - bTime;
         return (a.number || 0) - (b.number || 0);
       });
+    }
+
+    function normalizeBoardStatus(status) {
+      const v = (status || '').toLowerCase().trim();
+      if (v === 'done') return 'done';
+      if (v === 'in progress' || v === 'in-progress' || v === 'wip') return 'progress';
+      if (v === 'todo' || v === 'to do' || v === 'backlog') return 'todo';
+      return null;
+    }
+
+    function parseIssueNumberFromUrl(url) {
+      if (!url) return null;
+      const m = String(url).match(/\/issues\/(\d+)(?:$|[?#])/i);
+      return m ? Number(m[1]) : null;
+    }
+
+    function mapProjectItemToIssue(item) {
+      const colVals = Array.isArray(item?.memexProjectColumnValues) ? item.memexProjectColumnValues : [];
+      const titleCol = colVals.find(c => c.memexProjectColumnId === 'Title');
+      const issueUrl = item?.content?.url || titleCol?.value?.url || '';
+      const issueNumber = titleCol?.value?.number || parseIssueNumberFromUrl(issueUrl);
+      const issueTitle = titleCol?.value?.title?.raw || '';
+      const issueState = titleCol?.value?.state || item?.state || 'open';
+      const issueRepo = (colVals.find(c => c.memexProjectColumnId === 'Repository')?.value?.nameWithOwner || '').toLowerCase();
+      return {
+        url: issueUrl,
+        number: Number(issueNumber) || null,
+        title: issueTitle,
+        state: issueState,
+        repo: issueRepo,
+        labels: []
+      };
+    }
+
+    async function fetchProjectBoardBuckets(boardUrl, repoName) {
+      if (!boardUrl) return null;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(boardUrl)}`;
+      const html = await fetch(proxyUrl).then(res => {
+        if (!res.ok) throw new Error(`Project fetch failed: ${res.status}`);
+        return res.text();
+      });
+
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const script = doc.getElementById('memex-paginated-items-data');
+      if (!script?.textContent) return null;
+
+      const data = JSON.parse(script.textContent);
+      const groups = new Map();
+      (data?.groups?.nodes || []).forEach(g => {
+        groups.set(g.groupId, normalizeBoardStatus(g.groupMetadata?.name || g.groupValue));
+      });
+
+      const byUrl = new Map();
+      const byNumber = new Map();
+      const normalizedRepo = String(repoName || '').toLowerCase();
+
+      (data?.groupedItems || []).forEach(group => {
+        const bucket = groups.get(group.groupId);
+        if (!bucket) return;
+        (group.nodes || []).forEach(node => {
+          const issue = mapProjectItemToIssue(node);
+          if (!issue.url && !issue.number) return;
+          if (issue.repo && issue.repo !== normalizedRepo) return;
+          if (issue.url) byUrl.set(issue.url, bucket);
+          if (issue.number) byNumber.set(issue.number, bucket);
+        });
+      });
+
+      return { byUrl, byNumber };
     }
 
     function timeAgo(dateStr) {
@@ -945,39 +1015,48 @@
     }
 
     /* ─── Load All Apps ─── */
+    let isLoadingApps = false;
+
     async function loadApps() {
+      if (isLoadingApps) return;
+      isLoadingApps = true;
       const container = document.getElementById('appsContainer');
-      if (!APPS.length) {
-        container.innerHTML = '<div class="download-empty"><p>No apps configured yet.</p></div>';
-        return;
-      }
+      try {
+        if (!APPS.length) {
+          container.innerHTML = '<div class="download-empty"><p>No apps configured yet.</p></div>';
+          return;
+        }
 
-      const results = await Promise.allSettled(APPS.map(app => loadSingleApp(app)));
-      let html = '';
-      results.forEach((result, i) => {
-        html += result.status === 'fulfilled' ? result.value : buildErrorCard(APPS[i]);
-      });
-      container.innerHTML = html;
-
-      // Wire tabs
-      document.querySelectorAll('.app-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          const appId = tab.dataset.app, panel = tab.dataset.panel;
-          document.querySelectorAll(`.app-tab[data-app="${appId}"]`).forEach(t => t.classList.remove('active'));
-          document.querySelectorAll(`.app-panel[data-app="${appId}"]`).forEach(p => p.classList.remove('active'));
-          tab.classList.add('active');
-          document.querySelector(`.app-panel[data-app="${appId}"][data-panel="${panel}"]`)?.classList.add('active');
+        const results = await Promise.allSettled(APPS.map(app => loadSingleApp(app)));
+        let html = '';
+        results.forEach((result, i) => {
+          html += result.status === 'fulfilled' ? result.value : buildErrorCard(APPS[i]);
         });
-      });
+        container.innerHTML = html;
 
-      // Re-observe fade-in
-      document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+        // Wire tabs
+        document.querySelectorAll('.app-tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            const appId = tab.dataset.app, panel = tab.dataset.panel;
+            document.querySelectorAll(`.app-tab[data-app="${appId}"]`).forEach(t => t.classList.remove('active'));
+            document.querySelectorAll(`.app-panel[data-app="${appId}"]`).forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.querySelector(`.app-panel[data-app="${appId}"][data-panel="${panel}"]`)?.classList.add('active');
+          });
+        });
+
+        // Re-observe fade-in
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+      } finally {
+        isLoadingApps = false;
+      }
     }
 
     async function loadSingleApp(app) {
-      const [releases, issues] = await Promise.all([
+      const [releases, issues, projectBuckets] = await Promise.all([
         ghFetch(`https://api.github.com/repos/${app.repo}/releases`).catch(() => []),
-        ghFetch(`https://api.github.com/repos/${app.repo}/issues?state=all&per_page=100`).catch(() => [])
+        ghFetch(`https://api.github.com/repos/${app.repo}/issues?state=all&per_page=100`).catch(() => []),
+        fetchProjectBoardBuckets(app.projectBoardUrl, app.repo).catch(() => null)
       ]);
 
       const id = slugify(app.name);
@@ -990,7 +1069,7 @@
           const plat = detectPlatform(asset.name);
           if (!plat) continue;
           const assetNameLower = asset.name.toLowerCase();
-          //if (plat === 'macos' && assetNameLower.endsWith('-app.zip')) continue;
+          if (plat === 'macos' && assetNameLower.endsWith('-app.zip')) continue;
           if (!platformReleases[plat]) {
             platformReleases[plat] = { release, assets: [] };
           }
@@ -1014,14 +1093,22 @@
           url: issue.html_url, labels: issue.labels, state: issue.state,
           createdAt: issue.created_at
         };
-        if (issue.state === 'closed') done.push(item);
+
+        const statusFromProject = projectBuckets?.byUrl?.get(issue.html_url)
+          || projectBuckets?.byNumber?.get(issue.number)
+          || null;
+
+        if (statusFromProject === 'done') done.push(item);
+        else if (statusFromProject === 'progress') progress.push(item);
+        else if (statusFromProject === 'todo') todo.push(item);
+        else if (issue.state === 'closed') done.push(item);
         else if (labels.some(l => ['in progress', 'in-progress', 'wip'].includes(l))) progress.push(item);
         else todo.push(item);
       }
 
-      sortRoadmapOldestFirst(todo);
-      sortRoadmapOldestFirst(progress);
-      sortRoadmapOldestFirst(done);
+      sortBoardOldestFirst(todo);
+      sortBoardOldestFirst(progress);
+      sortBoardOldestFirst(done);
 
       return buildAppCard(app, id, platformReleases, detectedPlatforms, latestRelease, todo, progress, done);
     }
@@ -1160,14 +1247,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Downloads${latestRelease ? ` <span style="font-size:0.72rem;color:var(--text-tertiary);font-family:var(--mono)">${escapeHtml(latestRelease.tag_name)}</span>` : ''}
             </button>
-            <button class="app-tab" data-app="${id}" data-panel="roadmap">
+            <button class="app-tab" data-app="${id}" data-panel="board">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-              Roadmap${totalIssues ? ` <span style="font-size:0.72rem;color:var(--text-tertiary)">(${totalIssues})</span>` : ''}
+              Board${totalIssues ? ` <span style="font-size:0.72rem;color:var(--text-tertiary)">(${totalIssues})</span>` : ''}
             </button>
           </div>
           <div class="app-panels">
             <div class="app-panel active" data-app="${id}" data-panel="downloads">${downloadsHtml}</div>
-            <div class="app-panel" data-app="${id}" data-panel="roadmap">${boardHtml}</div>
+            <div class="app-panel" data-app="${id}" data-panel="board">${boardHtml}</div>
           </div>
         </div>`;
     }
@@ -1305,6 +1392,10 @@
 
     /* ─── Init ─── */
     loadApps();
+    // Keep board state fresh when issues move between Todo/In Progress/Done in GitHub.
+    setInterval(() => {
+      if (document.visibilityState === 'visible') loadApps();
+    }, 90000);
   </script>
 
 </body>
