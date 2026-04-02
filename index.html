@@ -952,7 +952,7 @@
     async function fetchProjectBoardBuckets(boardUrl, repoName) {
       if (!boardUrl) return null;
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(boardUrl)}`;
-      const html = await fetch(proxyUrl).then(res => {
+      const html = await fetchWithTimeout(proxyUrl).then(res => {
         if (!res.ok) throw new Error(`Project fetch failed: ${res.status}`);
         return res.text();
       });
@@ -1008,8 +1008,18 @@
       return `<span class="pricing-badge ${cfg.className}">${cfg.label}</span>`;
     }
 
+    async function fetchWithTimeout(url, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
     async function ghFetch(url) {
-      const res = await fetch(url);
+      const res = await fetchWithTimeout(url);
       if (!res.ok) throw new Error(`GitHub API ${res.status}`);
       return res.json();
     }
@@ -1027,7 +1037,12 @@
           return;
         }
 
-        const results = await Promise.allSettled(APPS.map(app => loadSingleApp(app)));
+        const results = await Promise.allSettled(
+          APPS.map(app => Promise.race([
+            loadSingleApp(app),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('App load timeout')), 15000))
+          ]))
+        );
         let html = '';
         results.forEach((result, i) => {
           html += result.status === 'fulfilled' ? result.value : buildErrorCard(APPS[i]);
@@ -1047,17 +1062,15 @@
 
         // Re-observe fade-in
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+      } catch (err) {
+        container.innerHTML = APPS.map(app => buildErrorCard(app)).join('');
       } finally {
         isLoadingApps = false;
       }
     }
 
     async function loadSingleApp(app) {
-      const [releases, issues, projectBuckets] = await Promise.all([
-        ghFetch(`https://api.github.com/repos/${app.repo}/releases`).catch(() => []),
-        ghFetch(`https://api.github.com/repos/${app.repo}/issues?state=all&per_page=100`).catch(() => []),
-        fetchProjectBoardBuckets(app.projectBoardUrl, app.repo).catch(() => null)
-      ]);
+      const releases = await ghFetch(`https://api.github.com/repos/${app.repo}/releases`).catch(() => []);
 
       const id = slugify(app.name);
 
@@ -1083,7 +1096,17 @@
       const detectedPlatforms = Object.keys(platformReleases);
       const latestRelease = releases[0] || null;
 
-      // Board
+      // Render app/downloads immediately, then hydrate board asynchronously.
+      queueBoardHydration(app, id);
+      return buildAppCard(app, id, platformReleases, detectedPlatforms, latestRelease);
+    }
+
+    async function queueBoardHydration(app, appId) {
+      const [issues, projectBuckets] = await Promise.all([
+        ghFetch(`https://api.github.com/repos/${app.repo}/issues?state=all&per_page=100`).catch(() => []),
+        fetchProjectBoardBuckets(app.projectBoardUrl, app.repo).catch(() => null)
+      ]);
+
       const todo = [], progress = [], done = [];
       for (const issue of issues) {
         if (issue.pull_request) continue;
@@ -1110,11 +1133,11 @@
       sortBoardOldestFirst(progress);
       sortBoardOldestFirst(done);
 
-      return buildAppCard(app, id, platformReleases, detectedPlatforms, latestRelease, todo, progress, done);
+      hydrateBoardPanel(appId, todo, progress, done);
     }
 
     /* ─── Render App Card ─── */
-    function buildAppCard(app, id, platformReleases, detectedPlatforms, latestRelease, todo, progress, done) {
+    function buildAppCard(app, id, platformReleases, detectedPlatforms, latestRelease) {
       const repoUrl = `https://github.com/${app.repo}`;
       const appIconSrc = app.icon || 'brand_punch.png';
       const pills = detectedPlatforms.map(p => {
@@ -1193,35 +1216,14 @@
       }
 
       // Board panel
-      const boardHtml = `
-        <div class="board-columns">
-          <div class="board-column col-todo">
-            <div class="board-column-header">
-              <div class="board-column-dot"></div>
-              <span class="board-column-name">Todo</span>
-              <span class="board-column-count">${todo.length}</span>
-            </div>
-            <div class="board-column-body">${renderBoardItems(todo)}</div>
-          </div>
-          <div class="board-column col-progress">
-            <div class="board-column-header">
-              <div class="board-column-dot"></div>
-              <span class="board-column-name">In Progress</span>
-              <span class="board-column-count">${progress.length}</span>
-            </div>
-            <div class="board-column-body">${renderBoardItems(progress)}</div>
-          </div>
-          <div class="board-column col-done">
-            <div class="board-column-header">
-              <div class="board-column-dot"></div>
-              <span class="board-column-name">Done</span>
-              <span class="board-column-count">${done.length}</span>
-            </div>
-            <div class="board-column-body">${renderBoardItems(done)}</div>
-          </div>
+      const boardLoadingHtml = `
+        <div class="download-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <p>Loading board...</p>
+          <p style="font-size:0.82rem;color:var(--text-tertiary)">Downloads are ready while board data syncs.</p>
         </div>`;
 
-      const totalIssues = todo.length + progress.length + done.length;
+      const totalIssues = null;
 
       return `
         <div class="app-showcase fade-in" id="app-${id}">
@@ -1254,9 +1256,62 @@
           </div>
           <div class="app-panels">
             <div class="app-panel active" data-app="${id}" data-panel="downloads">${downloadsHtml}</div>
-            <div class="app-panel" data-app="${id}" data-panel="board">${boardHtml}</div>
+            <div class="app-panel" data-app="${id}" data-panel="board">${boardLoadingHtml}</div>
           </div>
         </div>`;
+    }
+
+    function renderBoardColumns(todo, progress, done) {
+      return `
+        <div class="board-columns">
+          <div class="board-column col-todo">
+            <div class="board-column-header">
+              <div class="board-column-dot"></div>
+              <span class="board-column-name">Todo</span>
+              <span class="board-column-count">${todo.length}</span>
+            </div>
+            <div class="board-column-body">${renderBoardItems(todo)}</div>
+          </div>
+          <div class="board-column col-progress">
+            <div class="board-column-header">
+              <div class="board-column-dot"></div>
+              <span class="board-column-name">In Progress</span>
+              <span class="board-column-count">${progress.length}</span>
+            </div>
+            <div class="board-column-body">${renderBoardItems(progress)}</div>
+          </div>
+          <div class="board-column col-done">
+            <div class="board-column-header">
+              <div class="board-column-dot"></div>
+              <span class="board-column-name">Done</span>
+              <span class="board-column-count">${done.length}</span>
+            </div>
+            <div class="board-column-body">${renderBoardItems(done)}</div>
+          </div>
+        </div>`;
+    }
+
+    function hydrateBoardPanel(appId, todo, progress, done) {
+      const boardPanel = document.querySelector(`.app-panel[data-app="${appId}"][data-panel="board"]`);
+      if (!boardPanel) return;
+
+      boardPanel.innerHTML = renderBoardColumns(todo, progress, done);
+
+      const totalIssues = todo.length + progress.length + done.length;
+      const boardTab = document.querySelector(`.app-tab[data-app="${appId}"][data-panel="board"]`);
+      if (!boardTab) return;
+
+      const existingCount = boardTab.querySelector('.board-count');
+      if (existingCount) existingCount.remove();
+      if (totalIssues) {
+        const span = document.createElement('span');
+        span.className = 'board-count';
+        span.style.fontSize = '0.72rem';
+        span.style.color = 'var(--text-tertiary)';
+        span.textContent = `(${totalIssues})`;
+        boardTab.appendChild(document.createTextNode(' '));
+        boardTab.appendChild(span);
+      }
     }
 
     function renderGallery(images, appName) {
